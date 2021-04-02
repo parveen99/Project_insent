@@ -1,3 +1,5 @@
+############################################################
+
 from flask import Flask, Response, request, jsonify, json
 from pymongo import MongoClient
 import os
@@ -5,7 +7,8 @@ import os
 app = Flask(__name__)
 
 # establishing connection to mongodb
-client = MongoClient("mongodb+srv://" + os.environ['username'] + ":" + os.environ['password'] + "@cluster0.nkw8r.mongodb.net/insent?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE")
+client = MongoClient("mongodb+srv://" + os.environ['username'] + ":" + os.environ[
+    'password'] + "@cluster0.nkw8r.mongodb.net/insent?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE")
 Collection = input("Enter the Collection name you want to access : Users | Visitors | Conversation ")
 
 
@@ -17,22 +20,24 @@ class MongoAPI:
         self.collection = cursor[Collection]
         self.data = data
 
+    def read_one(self, data):
+        filt = self.data['Filter']  # specifying the criteria
+        documents = self.collection.find_one(filt, {"_id": 0})
+        if documents is None or documents == {}:
+            output = "No data is present in collection to find"
+        else:
+            output = jsonify(documents)
+        return output
+
     def read_all(self):
-        documents = self.collection.find({}, {'_id': 0})
+        filt = self.data['Filter']
+        documents = self.collection.find(filt, {"_id": 0})
         if documents is None or documents == {}:
             output = "No data is present in collection to find"
         else:
             output = []
             for data in documents:
                 output.append(data)
-        return output
-
-    def read_one(self, data):
-        documents = self.collection.find_one(data, {"_id": 0})
-        if documents is None or documents == {}:
-            output = "No data is present in collection to find"
-        else:
-            output = jsonify(documents)
         return output
 
     def write(self, data):
@@ -43,7 +48,7 @@ class MongoAPI:
 
     def update(self):
         filt = self.data['Filter']
-        updated_data = {"$set": self.data['DataToBeUpdated']}
+        updated_data = {"$pushAll": self.data['DataToBeUpdated']}
         response = self.collection.update_one(filt, updated_data)
         if response.modified_count > 0:
             output = {'Status': 'Successfully Updated'}
@@ -66,8 +71,8 @@ class MongoAPI:
         output = [{item: data[item] for item in data if item != '_id'} for data in response]
         return output
 
-# API for finding all document
-@app.route('/find_all', methods=['GET'])  
+
+@app.route('/find_all', methods=['GET'])  # API for finding all document
 def mongo_read_all():
     obj1 = MongoAPI()
     response = obj1.read_all()
@@ -159,6 +164,7 @@ def mongo_aggregate():
     return Response(response=json.dumps(response),
                     status=200,
                     mimetype='application/json')
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5002, host='0.0.0.0')
