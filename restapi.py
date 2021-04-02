@@ -66,8 +66,8 @@ class MongoAPI:
         output = [{item: data[item] for item in data if item != '_id'} for data in response]
         return output
 
-
-@app.route('/find_all', methods=['GET'])  # API for finding all document
+# API for finding all document
+@app.route('/find_all', methods=['GET'])  
 def mongo_read_all():
     obj1 = MongoAPI()
     response = obj1.read_all()
