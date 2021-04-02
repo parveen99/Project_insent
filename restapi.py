@@ -9,10 +9,9 @@ app = Flask(__name__)
 client = MongoClient(
     "mongodb+srv://sameena:sameena@cluster0.nkw8r.mongodb.net/insent?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE")
 
-
 class MongoAPIUser:
     def __init__(self, data):
-        self.client = MongoClient("mongodb+srv://sameena:sameena@cluster0.nkw8r.mongodb.net/insent?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE")
+        self.client = client
         cursor = self.client['insent']
         self.collection = cursor['Users']
         self.data = data
@@ -62,8 +61,7 @@ class MongoAPIUser:
 
 class MongoAPIVisitor:
     def __init__(self, data):
-        self.client = MongoClient(
-            "mongodb+srv://sameena:sameena@cluster0.nkw8r.mongodb.net/insent?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE")
+        self.client = client
         cursor = self.client['insent']
         self.collection = cursor['Visitors']
         self.data = data
@@ -110,6 +108,35 @@ class MongoAPIVisitor:
         output = [{item: data[item] for item in data if item != '_id'} for data in response]
         return output
 
+class MongoAPIConversation:
+    def __init__(self, data):
+        self.client = client
+        cursor = self.client['insent']
+        self.collection = cursor['Conversation']
+        self.data = data
+
+    def read_conversation(self):
+        documents = self.collection.find({},{'_id':0})
+        output=[]
+        for data in documents:
+            output.append(data)
+        return output
+
+    def write_conversation(self, data):
+        filt = self.data['name']
+        filter = {"name": filt}
+        response = self.collection.aggregate([{"$match": filter}])
+        output = [{item: data[item] for item in data if item != '_id'} for data in response]
+        if (len(output) == 0):
+            response = self.collection.insert_one(data)
+            output_response = {'Status': 'Successfully Inserted',
+                               'Document_ID': str(response.inserted_id)}
+            return output_response
+        else:
+            self.collection.update(filt, {"$push": {"logs": data['logs']}})
+            output_response = {'Status': 'Successfully pushed'}
+            return output_response
+
 @app.route('/read_user', methods=['GET'])
 def mongo_read_user():
     data = request.json
@@ -128,6 +155,15 @@ def mongo_read_visitor():
                     status=200,
                     mimetype='application/json')
 
+@app.route('/read_conversation', methods=['GET'])
+def mongo_read_conversation():
+    data = request.json
+    obj1 = MongoAPIConversation(data)
+    response = obj1.read_conversation()
+    return Response(response=json.dumps(response),
+                    status=200,
+                    mimetype='application/json')
+
 @app.route('/read_user_find_one', methods=['GET'])
 def mongo_read_one_user():
     data = request.json
@@ -138,7 +174,6 @@ def mongo_read_one_user():
     obj1 = MongoAPIUser(data)
     response = obj1.read_user_find_one(data)
     return response
-
 
 @app.route('/read_visitor_find_one', methods=['GET'])
 def mongo_read_one_visitor():
@@ -164,7 +199,6 @@ def mongo_write_user():
                     status=200,
                     mimetype='application/json')
 
-
 @app.route('/insert_visitor', methods=['POST'])
 def mongo_write_visitor():
     data = request.json
@@ -174,6 +208,19 @@ def mongo_write_visitor():
                         mimetype='application/json')
     obj1 = MongoAPIVisitor(data)
     response = obj1.write_visitor(data)
+    return Response(response=json.dumps(response),
+                    status=200,
+                    mimetype='application/json')
+
+@app.route('/insert_conversation', methods=['POST'])
+def conversation_insert():
+    data = request.json
+    if data is None or data == {}:
+        return Response(response=json.dumps({"Error": "Please provide connection information"}),
+                        status=400,
+                        mimetype='application/json')
+    obj1 = MongoAPIConversation(data)
+    response = obj1.write_conversation(data)
     return Response(response=json.dumps(response),
                     status=200,
                     mimetype='application/json')
@@ -220,7 +267,6 @@ def mongo_delete_user():
     return Response(response=json.dumps(response),
                     status=200,
                     mimetype='application/json')
-
 
 @app.route('/delete_visitor', methods=['DELETE'])
 def mongo_delete_visitor():
