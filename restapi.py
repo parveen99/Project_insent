@@ -7,8 +7,7 @@ import os
 app = Flask(__name__)
 
 # establishing connection to mongodb
-client = MongoClient("mongodb+srv://" + os.environ['username'] + ":" + os.environ[
-    'password'] + "@cluster0.nkw8r.mongodb.net/insent?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE")
+client = MongoClient()
 Collection = input("Enter the Collection name you want to access : Users | Visitors | Conversation ")
 
 
